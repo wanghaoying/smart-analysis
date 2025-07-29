@@ -1,6 +1,7 @@
 package model
 
 import (
+	"smart-analysis/internal/utils/llm"
 	"time"
 )
 
@@ -80,4 +81,34 @@ type Usage struct {
 	CreatedAt time.Time `json:"created_at"`
 	User      User      `json:"user" gorm:"foreignKey:UserID"`
 	Query     Query     `json:"query" gorm:"foreignKey:QueryID"`
+}
+
+// AnalysisResult LLM分析结果
+type AnalysisResult struct {
+	ID         int             `json:"id"`
+	SessionID  int             `json:"session_id"`
+	Query      string          `json:"query"`
+	Result     string          `json:"result"`
+	LLMModel   string          `json:"llm_model"`
+	CreatedAt  time.Time       `json:"created_at"`
+	TokenUsage *llm.TokenUsage `json:"token_usage,omitempty"`
+}
+
+// StreamAnalysisEvent 流式分析事件
+type StreamAnalysisEvent struct {
+	Type      string `json:"type"`     // content, error, complete
+	Content   string `json:"content"`  // 内容增量
+	Error     string `json:"error"`    // 错误信息
+	Done      bool   `json:"done"`     // 是否完成
+	EventID   string `json:"event_id"` // 事件ID
+	SessionID int    `json:"session_id"`
+	Query     string `json:"query"`
+}
+
+// VisualizationSuggestion 可视化建议
+type VisualizationSuggestion struct {
+	ID           int       `json:"id"`
+	AnalysisType string    `json:"analysis_type"`
+	Suggestion   string    `json:"suggestion"`
+	CreatedAt    time.Time `json:"created_at"`
 }

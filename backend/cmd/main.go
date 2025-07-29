@@ -67,8 +67,8 @@ func main() {
 		analysis.Use(middleware.AuthMiddleware())
 		{
 			analysis.POST("/query", analysisHandler.Query)
-			analysis.POST("/visualize", analysisHandler.Visualize)
-			analysis.POST("/report", analysisHandler.GenerateReport)
+			//analysis.POST("/visualize", analysisHandler.Visualize)
+			//analysis.POST("/report", analysisHandler.GenerateReport)
 			analysis.GET("/history", analysisHandler.GetHistory)
 			analysis.POST("/session", analysisHandler.CreateSession)
 			analysis.GET("/session/:id", analysisHandler.GetSession)

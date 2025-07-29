@@ -9,6 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// FileHandler 文件相关接口处理器
+// @Description 文件相关接口
+// @Tags 文件
+// @Router /file [group]
 type FileHandler struct {
 	fileService *service.FileService
 }
@@ -20,6 +24,16 @@ func NewFileHandler(fileService *service.FileService) *FileHandler {
 }
 
 // Upload 文件上传
+// @Summary 文件上传
+// @Description 上传文件
+// @Tags 文件
+// @Accept multipart/form-data
+// @Produce json
+// @Security ApiKeyAuth
+// @Param file formData file true "文件"
+// @Success 201 {object} model.Response{data=model.FileUploadResponse}
+// @Failure 400 {object} model.Response
+// @Router /api/file/upload [post]
 func (h *FileHandler) Upload(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
@@ -50,6 +64,13 @@ func (h *FileHandler) Upload(c *gin.Context) {
 }
 
 // List 获取文件列表
+// @Summary 获取文件列表
+// @Description 获取当前用户的文件列表
+// @Tags 文件
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {object} model.Response{data=[]model.File}
+// @Router /api/file/list [get]
 func (h *FileHandler) List(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
@@ -63,6 +84,15 @@ func (h *FileHandler) List(c *gin.Context) {
 }
 
 // Delete 删除文件
+// @Summary 删除文件
+// @Description 删除指定文件
+// @Tags 文件
+// @Produce json
+// @Security ApiKeyAuth
+// @Param id path int true "文件ID"
+// @Success 200 {object} model.Response
+// @Failure 400 {object} model.Response
+// @Router /api/file/{id} [delete]
 func (h *FileHandler) Delete(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
@@ -92,6 +122,16 @@ func (h *FileHandler) Delete(c *gin.Context) {
 }
 
 // Preview 预览文件数据
+// @Summary 预览文件数据
+// @Description 预览指定文件的部分数据
+// @Tags 文件
+// @Produce json
+// @Security ApiKeyAuth
+// @Param id path int true "文件ID"
+// @Param limit query int false "预览行数，默认50"
+// @Success 200 {object} model.Response{data=interface{}}
+// @Failure 400 {object} model.Response
+// @Router /api/file/preview/{id} [get]
 func (h *FileHandler) Preview(c *gin.Context) {
 	userID := c.GetInt("user_id")
 

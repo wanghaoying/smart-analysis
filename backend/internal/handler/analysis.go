@@ -51,62 +51,62 @@ func (h *AnalysisHandler) Query(c *gin.Context) {
 }
 
 // Visualize 生成可视化图表
-func (h *AnalysisHandler) Visualize(c *gin.Context) {
-	userID := c.GetInt("user_id")
-
-	var req model.VisualizationRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, model.Response{
-			Code:    400,
-			Message: "Invalid request: " + err.Error(),
-		})
-		return
-	}
-
-	response, err := h.analysisService.Visualize(userID, &req, h.fileService)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, model.Response{
-			Code:    400,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, model.Response{
-		Code:    200,
-		Message: "Visualization generated successfully",
-		Data:    response,
-	})
-}
-
-// GenerateReport 生成分析报告
-func (h *AnalysisHandler) GenerateReport(c *gin.Context) {
-	userID := c.GetInt("user_id")
-
-	var req model.ReportRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, model.Response{
-			Code:    400,
-			Message: "Invalid request: " + err.Error(),
-		})
-		return
-	}
-
-	response, err := h.analysisService.GenerateReport(userID, &req, h.fileService)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, model.Response{
-			Code:    400,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, model.Response{
-		Code:    200,
-		Message: "Report generated successfully",
-		Data:    response,
-	})
-}
+//func (h *AnalysisHandler) Visualize(c *gin.Context) {
+//	userID := c.GetInt("user_id")
+//
+//	var req model.VisualizationRequest
+//	if err := c.ShouldBindJSON(&req); err != nil {
+//		c.JSON(http.StatusBadRequest, model.Response{
+//			Code:    400,
+//			Message: "Invalid request: " + err.Error(),
+//		})
+//		return
+//	}
+//
+//	response, err := h.analysisService.Visualize(userID, &req, h.fileService)
+//	if err != nil {
+//		c.JSON(http.StatusBadRequest, model.Response{
+//			Code:    400,
+//			Message: err.Error(),
+//		})
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, model.Response{
+//		Code:    200,
+//		Message: "Visualization generated successfully",
+//		Data:    response,
+//	})
+//}
+//
+//// GenerateReport 生成分析报告
+//func (h *AnalysisHandler) GenerateReport(c *gin.Context) {
+//	userID := c.GetInt("user_id")
+//
+//	var req model.ReportRequest
+//	if err := c.ShouldBindJSON(&req); err != nil {
+//		c.JSON(http.StatusBadRequest, model.Response{
+//			Code:    400,
+//			Message: "Invalid request: " + err.Error(),
+//		})
+//		return
+//	}
+//
+//	response, err := h.analysisService.GenerateReport(userID, &req, h.fileService)
+//	if err != nil {
+//		c.JSON(http.StatusBadRequest, model.Response{
+//			Code:    400,
+//			Message: err.Error(),
+//		})
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, model.Response{
+//		Code:    200,
+//		Message: "Report generated successfully",
+//		Data:    response,
+//	})
+//}
 
 // GetHistory 获取查询历史
 func (h *AnalysisHandler) GetHistory(c *gin.Context) {

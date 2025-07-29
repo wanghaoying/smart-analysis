@@ -8,6 +8,10 @@ import (
 	"smart-analysis/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	// UserHandler 用户相关接口处理器
+	// @Description 用户相关接口
+	// @Tags 用户
+	// @Router /user [group]
 )
 
 type UserHandler struct {
@@ -23,6 +27,16 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 }
 
 // Register 用户注册
+// @Summary 用户注册
+// @Description 注册新用户
+// @Tags 用户
+// @Accept json
+// @Produce json
+// @Param data body model.RegisterRequest true "注册请求体"
+// @Success 201 {object} model.Response{data=model.LoginResponse}
+// @Failure 400 {object} model.Response
+// @Failure 500 {object} model.Response
+// @Router /api/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
 	var req model.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -63,6 +77,17 @@ func (h *UserHandler) Register(c *gin.Context) {
 }
 
 // Login 用户登录
+// @Summary 用户登录
+// @Description 用户登录获取 token
+// @Tags 用户
+// @Accept json
+// @Produce json
+// @Param data body model.LoginRequest true "登录请求体"
+// @Success 200 {object} model.Response{data=model.LoginResponse}
+// @Failure 400 {object} model.Response
+// @Failure 401 {object} model.Response
+// @Failure 500 {object} model.Response
+// @Router /api/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -103,6 +128,14 @@ func (h *UserHandler) Login(c *gin.Context) {
 }
 
 // GetProfile 获取用户资料
+// @Summary 获取用户资料
+// @Description 获取当前登录用户的资料
+// @Tags 用户
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {object} model.Response{data=model.User}
+// @Failure 404 {object} model.Response
+// @Router /api/profile [get]
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
@@ -123,6 +156,16 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 }
 
 // UpdateProfile 更新用户资料
+// @Summary 更新用户资料
+// @Description 更新当前登录用户的资料
+// @Tags 用户
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param data body model.UpdateProfileRequest true "更新资料请求体"
+// @Success 200 {object} model.Response{data=model.User}
+// @Failure 400 {object} model.Response
+// @Router /api/profile [put]
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	userID := c.GetInt("user_id")
 

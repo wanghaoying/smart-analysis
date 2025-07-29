@@ -28,7 +28,7 @@ func NewFileService() *FileService {
 
 // Upload 上传文件
 func (s *FileService) Upload(userID int, fileHeader *multipart.FileHeader) (*model.File, error) {
-	// 检查文件大小
+	// 检查文件大小 500MB
 	if fileHeader.Size > 500*1024*1024 { // 500MB
 		return nil, errors.New("file size exceeds limit")
 	}
