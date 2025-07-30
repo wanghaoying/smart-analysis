@@ -11,30 +11,30 @@ import (
 	"smart-analysis/internal/utils/sanbox"
 )
 
-// EinoAgentManager Eino智能体管理器
-type EinoAgentManager struct {
-	agents map[EinoAgentType]EinoAgent
-	config *EinoAgentConfig
+// AgentManager Eino智能体管理器
+type AgentManager struct {
+	agents map[AgentType]Agent
+	config *AgentConfig
 	mu     sync.RWMutex
 }
 
-// NewEinoAgentManager 创建新的Eino智能体管理器
-func NewEinoAgentManager(config *EinoAgentConfig) *EinoAgentManager {
-	return &EinoAgentManager{
-		agents: make(map[EinoAgentType]EinoAgent),
+// NewAgentManager 创建新的Eino智能体管理器
+func NewAgentManager(config *AgentConfig) *AgentManager {
+	return &AgentManager{
+		agents: make(map[AgentType]Agent),
 		config: config,
 	}
 }
 
 // RegisterAgent 注册智能体
-func (m *EinoAgentManager) RegisterAgent(agentType EinoAgentType, agent EinoAgent) {
+func (m *AgentManager) RegisterAgent(agentType AgentType, agent Agent) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.agents[agentType] = agent
 }
 
 // GetAgent 获取智能体
-func (m *EinoAgentManager) GetAgent(agentType EinoAgentType) (EinoAgent, bool) {
+func (m *AgentManager) GetAgent(agentType AgentType) (Agent, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	agent, exists := m.agents[agentType]
@@ -42,8 +42,8 @@ func (m *EinoAgentManager) GetAgent(agentType EinoAgentType) (EinoAgent, bool) {
 }
 
 // GetMainAgent 获取主智能体
-func (m *EinoAgentManager) GetMainAgent() (EinoAgent, error) {
-	agent, exists := m.GetAgent(EinoAgentTypeMain)
+func (m *AgentManager) GetMainAgent() (Agent, error) {
+	agent, exists := m.GetAgent(AgentTypeMain)
 	if !exists {
 		return nil, fmt.Errorf("main agent not found")
 	}
@@ -51,7 +51,7 @@ func (m *EinoAgentManager) GetMainAgent() (EinoAgent, error) {
 }
 
 // ProcessQuery 处理查询
-func (m *EinoAgentManager) ProcessQuery(ctx context.Context, query string) (*schema.Message, error) {
+func (m *AgentManager) ProcessQuery(ctx context.Context, query string) (*schema.Message, error) {
 	mainAgent, err := m.GetMainAgent()
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func (m *EinoAgentManager) ProcessQuery(ctx context.Context, query string) (*sch
 }
 
 // ProcessQueryWithHistory 处理带历史记录的查询
-func (m *EinoAgentManager) ProcessQueryWithHistory(ctx context.Context, messages []*schema.Message) (*schema.Message, error) {
+func (m *AgentManager) ProcessQueryWithHistory(ctx context.Context, messages []*schema.Message) (*schema.Message, error) {
 	mainAgent, err := m.GetMainAgent()
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (m *EinoAgentManager) ProcessQueryWithHistory(ctx context.Context, messages
 }
 
 // StreamQuery 流式处理查询
-func (m *EinoAgentManager) StreamQuery(ctx context.Context, query string) (*schema.StreamReader[*schema.Message], error) {
+func (m *AgentManager) StreamQuery(ctx context.Context, query string) (*schema.StreamReader[*schema.Message], error) {
 	mainAgent, err := m.GetMainAgent()
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (m *EinoAgentManager) StreamQuery(ctx context.Context, query string) (*sche
 }
 
 // StreamQueryWithHistory 流式处理带历史记录的查询
-func (m *EinoAgentManager) StreamQueryWithHistory(ctx context.Context, messages []*schema.Message) (*schema.StreamReader[*schema.Message], error) {
+func (m *AgentManager) StreamQueryWithHistory(ctx context.Context, messages []*schema.Message) (*schema.StreamReader[*schema.Message], error) {
 	mainAgent, err := m.GetMainAgent()
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (m *EinoAgentManager) StreamQueryWithHistory(ctx context.Context, messages 
 }
 
 // Initialize 初始化所有智能体
-func (m *EinoAgentManager) Initialize(ctx context.Context) error {
+func (m *AgentManager) Initialize(ctx context.Context) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -123,7 +123,7 @@ func (m *EinoAgentManager) Initialize(ctx context.Context) error {
 }
 
 // Shutdown 关闭所有智能体
-func (m *EinoAgentManager) Shutdown(ctx context.Context) error {
+func (m *AgentManager) Shutdown(ctx context.Context) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -145,8 +145,8 @@ func (m *EinoAgentManager) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// EinoAgentSystemBuilder 基于Eino的智能体系统构建器
-type EinoAgentSystemBuilder struct {
+// AgentSystemBuilder 基于Eino的智能体系统构建器
+type AgentSystemBuilder struct {
 	chatModel     model.BaseChatModel
 	pythonSandbox *sanbox.PythonSandbox
 	tools         []tool.BaseTool
@@ -154,52 +154,52 @@ type EinoAgentSystemBuilder struct {
 	enableDebug   bool
 }
 
-// NewEinoAgentSystemBuilder 创建新的Eino智能体系统构建器
-func NewEinoAgentSystemBuilder() *EinoAgentSystemBuilder {
-	return &EinoAgentSystemBuilder{
+// NewAgentSystemBuilder 创建新的Eino智能体系统构建器
+func NewAgentSystemBuilder() *AgentSystemBuilder {
+	return &AgentSystemBuilder{
 		maxSteps: 10, // 默认最大步数
 	}
 }
 
 // WithChatModel 设置聊天模型
-func (b *EinoAgentSystemBuilder) WithChatModel(model model.BaseChatModel) *EinoAgentSystemBuilder {
+func (b *AgentSystemBuilder) WithChatModel(model model.BaseChatModel) *AgentSystemBuilder {
 	b.chatModel = model
 	return b
 }
 
 // WithPythonSandbox 设置Python沙箱
-func (b *EinoAgentSystemBuilder) WithPythonSandbox(sandbox *sanbox.PythonSandbox) *EinoAgentSystemBuilder {
+func (b *AgentSystemBuilder) WithPythonSandbox(sandbox *sanbox.PythonSandbox) *AgentSystemBuilder {
 	b.pythonSandbox = sandbox
 	return b
 }
 
 // WithTools 设置工具
-func (b *EinoAgentSystemBuilder) WithTools(tools []tool.BaseTool) *EinoAgentSystemBuilder {
+func (b *AgentSystemBuilder) WithTools(tools []tool.BaseTool) *AgentSystemBuilder {
 	b.tools = tools
 	return b
 }
 
 // WithMaxSteps 设置最大步数
-func (b *EinoAgentSystemBuilder) WithMaxSteps(maxSteps int) *EinoAgentSystemBuilder {
+func (b *AgentSystemBuilder) WithMaxSteps(maxSteps int) *AgentSystemBuilder {
 	b.maxSteps = maxSteps
 	return b
 }
 
 // WithDebug 启用调试模式
-func (b *EinoAgentSystemBuilder) WithDebug(enable bool) *EinoAgentSystemBuilder {
+func (b *AgentSystemBuilder) WithDebug(enable bool) *AgentSystemBuilder {
 	b.enableDebug = enable
 	return b
 }
 
 // Build 构建智能体系统
-func (b *EinoAgentSystemBuilder) Build(ctx context.Context) (*EinoAgentManager, error) {
+func (b *AgentSystemBuilder) Build(ctx context.Context) (*AgentManager, error) {
 	// 验证必需的组件
 	if b.chatModel == nil {
 		return nil, fmt.Errorf("chat model is required")
 	}
 
 	// 创建配置
-	config := &EinoAgentConfig{
+	config := &AgentConfig{
 		ChatModel:     b.chatModel,
 		PythonSandbox: b.pythonSandbox,
 		Tools:         b.tools,
@@ -208,21 +208,21 @@ func (b *EinoAgentSystemBuilder) Build(ctx context.Context) (*EinoAgentManager, 
 	}
 
 	// 创建管理器
-	manager := NewEinoAgentManager(config)
+	manager := NewAgentManager(config)
 
 	// 创建主智能体
-	mainAgent, err := NewEinoMainAgent(ctx, config)
+	mainAgent, err := NewMainAgent(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create main agent: %w", err)
 	}
-	manager.RegisterAgent(EinoAgentTypeMain, mainAgent)
+	manager.RegisterAgent(AgentTypeMain, mainAgent)
 
 	// 创建React智能体
-	reactAgent, err := NewEinoReactAgent(ctx, config)
+	reactAgent, err := NewReactAgent(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create react agent: %w", err)
 	}
-	manager.RegisterAgent(EinoAgentTypeReact, reactAgent)
+	manager.RegisterAgent(AgentTypeReact, reactAgent)
 
 	// 创建分析智能体
 	if b.pythonSandbox != nil {
@@ -230,7 +230,7 @@ func (b *EinoAgentSystemBuilder) Build(ctx context.Context) (*EinoAgentManager, 
 		if err != nil {
 			return nil, fmt.Errorf("failed to create analysis agent: %w", err)
 		}
-		manager.RegisterAgent(EinoAgentTypeAnalysis, analysisAgent)
+		manager.RegisterAgent(AgentTypeAnalysis, analysisAgent)
 	}
 
 	// 初始化所有智能体
@@ -245,46 +245,46 @@ func (b *EinoAgentSystemBuilder) Build(ctx context.Context) (*EinoAgentManager, 
 	return manager, nil
 }
 
-// EinoAgentSystem 基于Eino的智能体系统（兼容性接口）
-type EinoAgentSystem struct {
-	manager *EinoAgentManager
-	config  *EinoAgentConfig
+// AgentSystem 基于Eino的智能体系统（兼容性接口）
+type AgentSystem struct {
+	manager *AgentManager
+	config  *AgentConfig
 }
 
-// NewEinoAgentSystem 创建新的Eino智能体系统
-func NewEinoAgentSystem(manager *EinoAgentManager, config *EinoAgentConfig) *EinoAgentSystem {
-	return &EinoAgentSystem{
+// NewAgentSystem 创建新的Eino智能体系统
+func NewAgentSystem(manager *AgentManager, config *AgentConfig) *AgentSystem {
+	return &AgentSystem{
 		manager: manager,
 		config:  config,
 	}
 }
 
 // ProcessQuery 处理查询（兼容性方法）
-func (s *EinoAgentSystem) ProcessQuery(ctx context.Context, query string) (*schema.Message, error) {
+func (s *AgentSystem) ProcessQuery(ctx context.Context, query string) (*schema.Message, error) {
 	return s.manager.ProcessQuery(ctx, query)
 }
 
 // ProcessQueryWithHistory 处理带历史记录的查询（兼容性方法）
-func (s *EinoAgentSystem) ProcessQueryWithHistory(ctx context.Context, messages []*schema.Message) (*schema.Message, error) {
+func (s *AgentSystem) ProcessQueryWithHistory(ctx context.Context, messages []*schema.Message) (*schema.Message, error) {
 	return s.manager.ProcessQueryWithHistory(ctx, messages)
 }
 
 // StreamQuery 流式处理查询（兼容性方法）
-func (s *EinoAgentSystem) StreamQuery(ctx context.Context, query string) (*schema.StreamReader[*schema.Message], error) {
+func (s *AgentSystem) StreamQuery(ctx context.Context, query string) (*schema.StreamReader[*schema.Message], error) {
 	return s.manager.StreamQuery(ctx, query)
 }
 
 // StreamQueryWithHistory 流式处理带历史记录的查询（兼容性方法）
-func (s *EinoAgentSystem) StreamQueryWithHistory(ctx context.Context, messages []*schema.Message) (*schema.StreamReader[*schema.Message], error) {
+func (s *AgentSystem) StreamQueryWithHistory(ctx context.Context, messages []*schema.Message) (*schema.StreamReader[*schema.Message], error) {
 	return s.manager.StreamQueryWithHistory(ctx, messages)
 }
 
 // GetManager 获取管理器
-func (s *EinoAgentSystem) GetManager() *EinoAgentManager {
+func (s *AgentSystem) GetManager() *AgentManager {
 	return s.manager
 }
 
 // Shutdown 关闭系统
-func (s *EinoAgentSystem) Shutdown(ctx context.Context) error {
+func (s *AgentSystem) Shutdown(ctx context.Context) error {
 	return s.manager.Shutdown(ctx)
 }

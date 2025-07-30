@@ -1,6 +1,7 @@
 import React from 'react';
 import { Avatar, Card } from 'antd';
 import { RobotOutlined, UserOutlined } from '@ant-design/icons';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface ChatMessageProps {
   type: 'user' | 'assistant';
@@ -10,6 +11,12 @@ interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ type, content, timestamp }) => {
   const isUser = type === 'user';
+  
+  // 检测内容是否包含ECharts配置
+  const hasEChartsConfig = content.includes('```json') && 
+                           (content.includes('"type"') && content.includes('"data"')) ||
+                           content.includes('```echarts') ||
+                           content.includes('ECHARTS_CONFIG_START');
   
   return (
     <div style={{ 
@@ -26,7 +33,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ type, content, timestamp }) =
         }}
       />
       <div style={{ 
-        maxWidth: '70%',
+        maxWidth: isUser ? '70%' : '85%', // AI消息可以更宽，支持图表显示
         display: 'flex',
         flexDirection: 'column',
         alignItems: isUser ? 'flex-end' : 'flex-start'
@@ -38,17 +45,23 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ type, content, timestamp }) =
             border: `1px solid ${isUser ? '#91d5ff' : '#b7eb8f'}`,
             borderRadius: 8,
             marginBottom: 4,
+            width: '100%'
           }}
           bodyStyle={{ padding: 12 }}
         >
-          <div style={{ 
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            fontSize: 14,
-            lineHeight: 1.6
-          }}>
-            {content}
-          </div>
+          {!isUser && hasEChartsConfig ? (
+            // 使用Markdown渲染器处理包含ECharts的内容
+            <MarkdownRenderer content={content} />
+          ) : (
+            <div style={{ 
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              fontSize: 14,
+              lineHeight: 1.6
+            }}>
+              {content}
+            </div>
+          )}
         </Card>
         <div style={{ 
           fontSize: 11, 

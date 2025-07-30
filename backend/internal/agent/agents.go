@@ -13,31 +13,35 @@ import (
 	"smart-analysis/internal/utils/sanbox"
 )
 
-// EinoReactAgent 基于Eino的React智能体
-type EinoReactAgent struct {
+// ReactAgent 基于React的智能体
+type ReactAgent struct {
 	agent     *react.Agent
-	config    *EinoAgentConfig
+	config    *AgentConfig
 	tools     []tool.BaseTool
-	agentType EinoAgentType
+	agentType AgentType
 }
 
-// NewEinoReactAgent 创建新的Eino React智能体
-func NewEinoReactAgent(ctx context.Context, config *EinoAgentConfig) (*EinoReactAgent, error) {
+// NewReactAgent 创建新的React智能体
+func NewReactAgent(ctx context.Context, config *AgentConfig) (*ReactAgent, error) {
 	// 创建工具
 	tools := make([]tool.BaseTool, 0)
 
 	if config.PythonSandbox != nil {
-		// 添加Python分析工具
+		// 添加Python分析工具（包含统计分析功能）
 		pythonTool := NewPythonAnalysisTool(config.PythonSandbox)
 		tools = append(tools, pythonTool)
 
-		// 添加数据可视化工具
-		vizTool := NewDataVisualizationTool(config.PythonSandbox)
+		// 添加ECharts可视化工具
+		vizTool := NewEChartsVisualizationTool(config.PythonSandbox)
 		tools = append(tools, vizTool)
 
-		// 添加统计分析工具
-		statTool := NewStatisticalAnalysisTool(config.PythonSandbox)
-		tools = append(tools, statTool)
+		// 添加文件读取工具
+		fileReaderTool := NewFileReaderTool(config.PythonSandbox)
+		tools = append(tools, fileReaderTool)
+
+		// 添加数据查询工具
+		queryTool := NewDataQueryTool(config.PythonSandbox)
+		tools = append(tools, queryTool)
 	}
 
 	// 添加用户提供的工具
@@ -56,14 +60,16 @@ func NewEinoReactAgent(ctx context.Context, config *EinoAgentConfig) (*EinoReact
 				Role: schema.System,
 				Content: `你是一个专业的数据分析助手。你拥有以下能力：
 
-1. 使用python_analysis工具执行Python代码进行数据分析
-2. 使用data_visualization工具创建各种数据可视化图表
-3. 使用statistical_analysis工具进行统计分析
+1. 使用python_analysis工具执行Python代码进行数据分析和统计计算
+2. 使用echarts_visualization工具创建ECharts格式的交互式图表
+3. 使用file_reader工具读取和预览数据文件
+4. 使用data_query工具进行数据查询和筛选
 
 当用户询问数据分析相关问题时：
 - 首先理解用户的需求和数据
 - 选择合适的工具来完成分析任务
 - 为用户提供清晰的分析结果和解释
+- 对于图表，优先使用echarts_visualization工具生成可交互的图表配置
 - 如果需要，可以建议进一步的分析方向
 
 请始终保持专业、准确，并提供有价值的洞察。`,
@@ -92,72 +98,72 @@ func NewEinoReactAgent(ctx context.Context, config *EinoAgentConfig) (*EinoReact
 		return nil, fmt.Errorf("failed to create react agent: %w", err)
 	}
 
-	return &EinoReactAgent{
+	return &ReactAgent{
 		agent:     agent,
 		config:    config,
 		tools:     tools,
-		agentType: EinoAgentTypeReact,
+		agentType: AgentTypeReact,
 	}, nil
 }
 
 // GetType 获取智能体类型
-func (a *EinoReactAgent) GetType() EinoAgentType {
+func (a *ReactAgent) GetType() AgentType {
 	return a.agentType
 }
 
 // Generate 生成响应
-func (a *EinoReactAgent) Generate(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.Message, error) {
+func (a *ReactAgent) Generate(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.Message, error) {
 	return a.agent.Generate(ctx, messages)
 }
 
 // Stream 流式生成响应
-func (a *EinoReactAgent) Stream(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.StreamReader[*schema.Message], error) {
+func (a *ReactAgent) Stream(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.StreamReader[*schema.Message], error) {
 	return a.agent.Stream(ctx, messages)
 }
 
 // Initialize 初始化智能体
-func (a *EinoReactAgent) Initialize(ctx context.Context) error {
+func (a *ReactAgent) Initialize(ctx context.Context) error {
 	// React智能体已经在创建时初始化
 	return nil
 }
 
 // Shutdown 关闭智能体
-func (a *EinoReactAgent) Shutdown(ctx context.Context) error {
+func (a *ReactAgent) Shutdown(ctx context.Context) error {
 	// 清理资源
 	return nil
 }
 
-// EinoMainAgent 基于Eino的主智能体
-type EinoMainAgent struct {
+// MainAgent 主智能体
+type MainAgent struct {
 	chatModel  model.BaseChatModel
-	config     *EinoAgentConfig
-	agentType  EinoAgentType
-	reactAgent *EinoReactAgent
+	config     *AgentConfig
+	agentType  AgentType
+	reactAgent *ReactAgent
 }
 
-// NewEinoMainAgent 创建新的Eino主智能体
-func NewEinoMainAgent(ctx context.Context, config *EinoAgentConfig) (*EinoMainAgent, error) {
+// NewMainAgent 创建新的主智能体
+func NewMainAgent(ctx context.Context, config *AgentConfig) (*MainAgent, error) {
 	// 创建React智能体作为执行引擎
-	reactAgent, err := NewEinoReactAgent(ctx, config)
+	reactAgent, err := NewReactAgent(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create react agent: %w", err)
 	}
 
-	return &EinoMainAgent{
+	return &MainAgent{
 		chatModel:  config.ChatModel,
 		config:     config,
-		agentType:  EinoAgentTypeMain,
+		agentType:  AgentTypeMain,
 		reactAgent: reactAgent,
 	}, nil
 }
 
 // GetType 获取智能体类型
-func (a *EinoMainAgent) GetType() EinoAgentType {
+func (a *MainAgent) GetType() AgentType {
 	return a.agentType
 }
 
 // Generate 生成响应
-func (a *EinoMainAgent) Generate(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.Message, error) {
+func (a *MainAgent) Generate(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.Message, error) {
 	// 进行意图识别和查询改写
 	rewrittenMessages, err := a.processUserIntent(ctx, messages)
 	if err != nil {
@@ -169,7 +175,7 @@ func (a *EinoMainAgent) Generate(ctx context.Context, messages []*schema.Message
 }
 
 // Stream 流式生成响应
-func (a *EinoMainAgent) Stream(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.StreamReader[*schema.Message], error) {
+func (a *MainAgent) Stream(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.StreamReader[*schema.Message], error) {
 	// 进行意图识别和查询改写
 	rewrittenMessages, err := a.processUserIntent(ctx, messages)
 	if err != nil {
@@ -181,17 +187,17 @@ func (a *EinoMainAgent) Stream(ctx context.Context, messages []*schema.Message, 
 }
 
 // Initialize 初始化智能体
-func (a *EinoMainAgent) Initialize(ctx context.Context) error {
+func (a *MainAgent) Initialize(ctx context.Context) error {
 	return a.reactAgent.Initialize(ctx)
 }
 
 // Shutdown 关闭智能体
-func (a *EinoMainAgent) Shutdown(ctx context.Context) error {
+func (a *MainAgent) Shutdown(ctx context.Context) error {
 	return a.reactAgent.Shutdown(ctx)
 }
 
 // processUserIntent 处理用户意图识别和查询改写
-func (a *EinoMainAgent) processUserIntent(ctx context.Context, messages []*schema.Message) ([]*schema.Message, error) {
+func (a *MainAgent) processUserIntent(ctx context.Context, messages []*schema.Message) ([]*schema.Message, error) {
 	if len(messages) == 0 {
 		return messages, nil
 	}
@@ -257,22 +263,22 @@ func (a *EinoMainAgent) processUserIntent(ctx context.Context, messages []*schem
 type EinoAnalysisAgent struct {
 	chatModel model.BaseChatModel
 	sandbox   *sanbox.PythonSandbox
-	config    *EinoAgentConfig
-	agentType EinoAgentType
+	config    *AgentConfig
+	agentType AgentType
 }
 
 // NewEinoAnalysisAgent 创建新的Eino分析智能体
-func NewEinoAnalysisAgent(ctx context.Context, config *EinoAgentConfig) (*EinoAnalysisAgent, error) {
+func NewEinoAnalysisAgent(ctx context.Context, config *AgentConfig) (*EinoAnalysisAgent, error) {
 	return &EinoAnalysisAgent{
 		chatModel: config.ChatModel,
 		sandbox:   config.PythonSandbox,
 		config:    config,
-		agentType: EinoAgentTypeAnalysis,
+		agentType: AgentTypeAnalysis,
 	}, nil
 }
 
 // GetType 获取智能体类型
-func (a *EinoAnalysisAgent) GetType() EinoAgentType {
+func (a *EinoAnalysisAgent) GetType() AgentType {
 	return a.agentType
 }
 
