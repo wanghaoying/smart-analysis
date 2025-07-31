@@ -1,4 +1,4 @@
-package agent
+package agents
 
 import (
 	"context"
@@ -10,48 +10,65 @@ import (
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
-	"smart-analysis/internal/utils/sanbox"
+	"smart-analysis/internal/tools"
+	"smart-analysis/internal/types"
 )
 
 // ReactAgent 基于React的智能体
 type ReactAgent struct {
 	agent     *react.Agent
-	config    *AgentConfig
+	config    *types.AgentConfig
 	tools     []tool.BaseTool
-	agentType AgentType
+	agentType types.AgentType
 }
 
 // NewReactAgent 创建新的React智能体
-func NewReactAgent(ctx context.Context, config *AgentConfig) (*ReactAgent, error) {
+func NewReactAgent(ctx context.Context, config *types.AgentConfig) (*ReactAgent, error) {
 	// 创建工具
-	tools := make([]tool.BaseTool, 0)
+	toolsList := make([]tool.BaseTool, 0)
 
 	if config.PythonSandbox != nil {
 		// 添加Python分析工具（包含统计分析功能）
-		pythonTool := NewPythonAnalysisTool(config.PythonSandbox)
-		tools = append(tools, pythonTool)
+		pythonTool := tools.NewPythonAnalysisTool(config.PythonSandbox)
+		toolsList = append(toolsList, pythonTool)
 
 		// 添加ECharts可视化工具
-		vizTool := NewEChartsVisualizationTool(config.PythonSandbox)
-		tools = append(tools, vizTool)
+		vizTool := tools.NewEChartsVisualizationTool(config.PythonSandbox)
+		toolsList = append(toolsList, vizTool)
 
 		// 添加文件读取工具
-		fileReaderTool := NewFileReaderTool(config.PythonSandbox)
-		tools = append(tools, fileReaderTool)
+		fileReaderTool := tools.NewFileReaderTool(config.PythonSandbox)
+		toolsList = append(toolsList, fileReaderTool)
 
 		// 添加数据查询工具
-		queryTool := NewDataQueryTool(config.PythonSandbox)
-		tools = append(tools, queryTool)
+		queryTool := tools.NewDataQueryTool(config.PythonSandbox)
+		toolsList = append(toolsList, queryTool)
+
+		// 添加数据预处理工具
+		preprocessingTool := tools.NewDataPreprocessingTool(config.PythonSandbox)
+		toolsList = append(toolsList, preprocessingTool)
+
+		// 添加机器学习分析工具
+		mlTool := tools.NewMLAnalysisTool(config.PythonSandbox)
+		toolsList = append(toolsList, mlTool)
+
+		// 添加文本分析工具
+		textTool := tools.NewTextAnalysisTool(config.PythonSandbox)
+		toolsList = append(toolsList, textTool)
+
+		// 添加报告生成工具
+		reportTool := tools.NewReportGeneratorTool(config.PythonSandbox)
+		toolsList = append(toolsList, reportTool)
 	}
 
 	// 添加用户提供的工具
-	tools = append(tools, config.Tools...)
+	toolsList = append(toolsList, config.Tools...)
 
 	// 创建React智能体配置
 	reactConfig := &react.AgentConfig{
 		ToolCallingModel: config.ChatModel.(model.ToolCallingChatModel),
 		ToolsConfig: compose.ToolsNodeConfig{
-			Tools: tools,
+			Tools: toolsList,
 		},
 		MaxStep: config.MaxSteps,
 		MessageModifier: func(ctx context.Context, input []*schema.Message) []*schema.Message {
@@ -64,12 +81,16 @@ func NewReactAgent(ctx context.Context, config *AgentConfig) (*ReactAgent, error
 2. 使用echarts_visualization工具创建ECharts格式的交互式图表
 3. 使用file_reader工具读取和预览数据文件
 4. 使用data_query工具进行数据查询和筛选
+5. 使用data_preprocessing工具进行数据预处理和特征工程
+6. 使用ml_analysis工具进行机器学习分析（分类、回归、聚类）
 
 当用户询问数据分析相关问题时：
 - 首先理解用户的需求和数据
 - 选择合适的工具来完成分析任务
 - 为用户提供清晰的分析结果和解释
 - 对于图表，优先使用echarts_visualization工具生成可交互的图表配置
+- 对于复杂的数据处理，可以先使用data_preprocessing工具预处理数据
+- 对于机器学习任务，使用ml_analysis工具进行建模和评估
 - 如果需要，可以建议进一步的分析方向
 
 请始终保持专业、准确，并提供有价值的洞察。`,
@@ -101,13 +122,13 @@ func NewReactAgent(ctx context.Context, config *AgentConfig) (*ReactAgent, error
 	return &ReactAgent{
 		agent:     agent,
 		config:    config,
-		tools:     tools,
-		agentType: AgentTypeReact,
+		tools:     toolsList,
+		agentType: types.AgentTypeReact,
 	}, nil
 }
 
 // GetType 获取智能体类型
-func (a *ReactAgent) GetType() AgentType {
+func (a *ReactAgent) GetType() types.AgentType {
 	return a.agentType
 }
 
@@ -136,13 +157,13 @@ func (a *ReactAgent) Shutdown(ctx context.Context) error {
 // MainAgent 主智能体
 type MainAgent struct {
 	chatModel  model.BaseChatModel
-	config     *AgentConfig
-	agentType  AgentType
+	config     *types.AgentConfig
+	agentType  types.AgentType
 	reactAgent *ReactAgent
 }
 
 // NewMainAgent 创建新的主智能体
-func NewMainAgent(ctx context.Context, config *AgentConfig) (*MainAgent, error) {
+func NewMainAgent(ctx context.Context, config *types.AgentConfig) (*MainAgent, error) {
 	// 创建React智能体作为执行引擎
 	reactAgent, err := NewReactAgent(ctx, config)
 	if err != nil {
@@ -152,13 +173,13 @@ func NewMainAgent(ctx context.Context, config *AgentConfig) (*MainAgent, error) 
 	return &MainAgent{
 		chatModel:  config.ChatModel,
 		config:     config,
-		agentType:  AgentTypeMain,
+		agentType:  types.AgentTypeMain,
 		reactAgent: reactAgent,
 	}, nil
 }
 
 // GetType 获取智能体类型
-func (a *MainAgent) GetType() AgentType {
+func (a *MainAgent) GetType() types.AgentType {
 	return a.agentType
 }
 
@@ -257,152 +278,4 @@ func (a *MainAgent) processUserIntent(ctx context.Context, messages []*schema.Me
 	}
 
 	return messages, nil
-}
-
-// EinoAnalysisAgent 基于Eino的数据分析智能体（简化版，主要用于特定分析任务）
-type EinoAnalysisAgent struct {
-	chatModel model.BaseChatModel
-	sandbox   *sanbox.PythonSandbox
-	config    *AgentConfig
-	agentType AgentType
-}
-
-// NewEinoAnalysisAgent 创建新的Eino分析智能体
-func NewEinoAnalysisAgent(ctx context.Context, config *AgentConfig) (*EinoAnalysisAgent, error) {
-	return &EinoAnalysisAgent{
-		chatModel: config.ChatModel,
-		sandbox:   config.PythonSandbox,
-		config:    config,
-		agentType: AgentTypeAnalysis,
-	}, nil
-}
-
-// GetType 获取智能体类型
-func (a *EinoAnalysisAgent) GetType() AgentType {
-	return a.agentType
-}
-
-// Generate 生成响应
-func (a *EinoAnalysisAgent) Generate(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.Message, error) {
-	// 使用LLM生成Python代码
-	code, err := a.generateAnalysisCode(ctx, messages)
-	if err != nil {
-		return &schema.Message{
-			Role:    schema.Assistant,
-			Content: fmt.Sprintf("代码生成失败: %v", err),
-		}, nil
-	}
-
-	// 执行Python代码
-	result, err := a.sandbox.ExecutePython(code)
-	if err != nil {
-		return &schema.Message{
-			Role:    schema.Assistant,
-			Content: fmt.Sprintf("代码执行失败: %v", err),
-		}, nil
-	}
-
-	if !result.Success {
-		return &schema.Message{
-			Role:    schema.Assistant,
-			Content: fmt.Sprintf("分析执行失败: %s", result.Error),
-		}, nil
-	}
-
-	// 格式化结果
-	response := "数据分析完成！\n\n"
-	if result.Stdout != "" {
-		response += "分析结果:\n" + result.Stdout + "\n\n"
-	}
-	if result.ImagePath != "" {
-		response += "生成的图表: " + result.ImagePath + "\n"
-	}
-
-	return &schema.Message{
-		Role:    schema.Assistant,
-		Content: response,
-	}, nil
-}
-
-// Stream 流式生成响应
-func (a *EinoAnalysisAgent) Stream(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.StreamReader[*schema.Message], error) {
-	// 简单实现：先生成完整响应，然后流式返回
-	response, err := a.Generate(ctx, messages, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	// 创建流式读取器
-	sr, sw := schema.Pipe[*schema.Message](1)
-	go func() {
-		defer sw.Close()
-		sw.Send(response, nil)
-	}()
-
-	return sr, nil
-}
-
-// Initialize 初始化智能体
-func (a *EinoAnalysisAgent) Initialize(ctx context.Context) error {
-	return nil
-}
-
-// Shutdown 关闭智能体
-func (a *EinoAnalysisAgent) Shutdown(ctx context.Context) error {
-	return nil
-}
-
-// generateAnalysisCode 生成分析代码
-func (a *EinoAnalysisAgent) generateAnalysisCode(ctx context.Context, messages []*schema.Message) (string, error) {
-	// 构建代码生成的系统提示
-	systemPrompt := `你是一个专业的Python数据分析师。请根据用户的需求生成高质量的Python代码。
-
-代码要求：
-1. 使用pandas, numpy, matplotlib, seaborn等常用库
-2. 代码完整且可执行
-3. 包含适当的注释
-4. 处理可能的错误情况
-5. 如果生成图表，保存为'output.png'
-
-请只返回Python代码，不要添加其他解释。`
-
-	// 构建代码生成消息
-	codeMessages := []*schema.Message{
-		{
-			Role:    schema.System,
-			Content: systemPrompt,
-		},
-	}
-	codeMessages = append(codeMessages, messages...)
-
-	// 调用LLM生成代码
-	response, err := a.chatModel.Generate(ctx, codeMessages)
-	if err != nil {
-		return "", err
-	}
-
-	// 提取Python代码
-	code := a.extractPythonCode(response.Content)
-	return code, nil
-}
-
-// extractPythonCode 从响应中提取Python代码
-func (a *EinoAnalysisAgent) extractPythonCode(content string) string {
-	// 查找代码块
-	start := strings.Index(content, "```python")
-	if start == -1 {
-		start = strings.Index(content, "```")
-		if start == -1 {
-			return strings.TrimSpace(content)
-		}
-	} else {
-		start += len("```python")
-	}
-
-	end := strings.Index(content[start:], "```")
-	if end == -1 {
-		return strings.TrimSpace(content[start:])
-	}
-
-	return strings.TrimSpace(content[start : start+end])
 }

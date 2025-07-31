@@ -1,4 +1,4 @@
-package agent
+package manager
 
 import (
 	"context"
@@ -8,43 +8,49 @@ import (
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/schema"
+	"smart-analysis/internal/agents"
+	"smart-analysis/internal/types"
 	"smart-analysis/internal/utils/sanbox"
 )
 
-// AgentManager Eino智能体管理器
+// AgentManager 智能体管理器
 type AgentManager struct {
-	agents map[AgentType]Agent
-	config *AgentConfig
+	agents map[types.AgentType]types.Agent
+	config *types.AgentConfig
 	mu     sync.RWMutex
 }
 
-// NewAgentManager 创建新的Eino智能体管理器
-func NewAgentManager(config *AgentConfig) *AgentManager {
+// NewAgentManager 创建新的智能体管理器
+func NewAgentManager(config *types.AgentConfig) *AgentManager {
 	return &AgentManager{
-		agents: make(map[AgentType]Agent),
+		agents: make(map[types.AgentType]types.Agent),
 		config: config,
 	}
 }
 
 // RegisterAgent 注册智能体
-func (m *AgentManager) RegisterAgent(agentType AgentType, agent Agent) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.agents[agentType] = agent
+func (am *AgentManager) RegisterAgent(agentType types.AgentType, agent types.Agent) {
+	am.mu.Lock()
+	defer am.mu.Unlock()
+	am.agents[agentType] = agent
 }
 
 // GetAgent 获取智能体
-func (m *AgentManager) GetAgent(agentType AgentType) (Agent, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	agent, exists := m.agents[agentType]
-	return agent, exists
+func (am *AgentManager) GetAgent(agentType types.AgentType) (types.Agent, error) {
+	am.mu.RLock()
+	defer am.mu.RUnlock()
+
+	agent, exists := am.agents[agentType]
+	if !exists {
+		return nil, fmt.Errorf("智能体类型 %s 未注册", agentType)
+	}
+	return agent, nil
 }
 
 // GetMainAgent 获取主智能体
-func (m *AgentManager) GetMainAgent() (Agent, error) {
-	agent, exists := m.GetAgent(AgentTypeMain)
-	if !exists {
+func (m *AgentManager) GetMainAgent() (types.Agent, error) {
+	agent, err := m.GetAgent(types.AgentTypeMain)
+	if err != nil {
 		return nil, fmt.Errorf("main agent not found")
 	}
 	return agent, nil
@@ -145,7 +151,7 @@ func (m *AgentManager) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// AgentSystemBuilder 基于Eino的智能体系统构建器
+// AgentSystemBuilder 智能体系统构建器
 type AgentSystemBuilder struct {
 	chatModel     model.BaseChatModel
 	pythonSandbox *sanbox.PythonSandbox
@@ -154,7 +160,7 @@ type AgentSystemBuilder struct {
 	enableDebug   bool
 }
 
-// NewAgentSystemBuilder 创建新的Eino智能体系统构建器
+// NewAgentSystemBuilder 创建新的智能体系统构建器
 func NewAgentSystemBuilder() *AgentSystemBuilder {
 	return &AgentSystemBuilder{
 		maxSteps: 10, // 默认最大步数
@@ -199,7 +205,7 @@ func (b *AgentSystemBuilder) Build(ctx context.Context) (*AgentManager, error) {
 	}
 
 	// 创建配置
-	config := &AgentConfig{
+	config := &types.AgentConfig{
 		ChatModel:     b.chatModel,
 		PythonSandbox: b.pythonSandbox,
 		Tools:         b.tools,
@@ -211,48 +217,46 @@ func (b *AgentSystemBuilder) Build(ctx context.Context) (*AgentManager, error) {
 	manager := NewAgentManager(config)
 
 	// 创建主智能体
-	mainAgent, err := NewMainAgent(ctx, config)
+	mainAgent, err := agents.NewMainAgent(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create main agent: %w", err)
 	}
-	manager.RegisterAgent(AgentTypeMain, mainAgent)
+	manager.RegisterAgent(types.AgentTypeMain, mainAgent)
 
 	// 创建React智能体
-	reactAgent, err := NewReactAgent(ctx, config)
+	reactAgent, err := agents.NewReactAgent(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create react agent: %w", err)
 	}
-	manager.RegisterAgent(AgentTypeReact, reactAgent)
+	manager.RegisterAgent(types.AgentTypeReact, reactAgent)
 
 	// 创建分析智能体
 	if b.pythonSandbox != nil {
-		analysisAgent, err := NewEinoAnalysisAgent(ctx, config)
+		analysisAgent, err := agents.NewAnalysisAgent(ctx, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create analysis agent: %w", err)
 		}
-		manager.RegisterAgent(AgentTypeAnalysis, analysisAgent)
-	}
-
-	// 初始化所有智能体
+		manager.RegisterAgent(types.AgentTypeAnalysis, analysisAgent)
+	} // 初始化所有智能体
 	if err := manager.Initialize(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize agent system: %w", err)
 	}
 
 	if b.enableDebug {
-		fmt.Println("Eino agent system built successfully")
+		fmt.Println("Agent system built successfully")
 	}
 
 	return manager, nil
 }
 
-// AgentSystem 基于Eino的智能体系统（兼容性接口）
+// AgentSystem 智能体系统（兼容性接口）
 type AgentSystem struct {
 	manager *AgentManager
-	config  *AgentConfig
+	config  *types.AgentConfig
 }
 
-// NewAgentSystem 创建新的Eino智能体系统
-func NewAgentSystem(manager *AgentManager, config *AgentConfig) *AgentSystem {
+// NewAgentSystem 创建新的智能体系统
+func NewAgentSystem(manager *AgentManager, config *types.AgentConfig) *AgentSystem {
 	return &AgentSystem{
 		manager: manager,
 		config:  config,
