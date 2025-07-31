@@ -1,17 +1,15 @@
 package tools_test
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"log"
+	"testing"
 
 	"smart-analysis/internal/tools"
 	"smart-analysis/internal/utils/sanbox"
 )
 
 // TestToolIntegration 工具集成测试
-func TestToolIntegration() {
+func TestToolIntegration(t *testing.T) {
 	fmt.Println("=== Smart Analysis 工具集成测试 ===")
 
 	// 创建Python沙箱

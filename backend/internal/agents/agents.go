@@ -3,8 +3,6 @@ package agents
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
@@ -154,27 +152,25 @@ func (a *ReactAgent) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// MainAgent 主智能体
+// MainAgent 主智能体（为了兼容性保留，内部使用MultiAgentManager）
 type MainAgent struct {
-	chatModel  model.BaseChatModel
-	config     *types.AgentConfig
-	agentType  types.AgentType
-	reactAgent *ReactAgent
+	manager   *MultiAgentManager
+	config    *types.AgentConfig
+	agentType types.AgentType
 }
 
-// NewMainAgent 创建新的主智能体
+// NewMainAgent 创建新的主智能体（兼容性接口）
 func NewMainAgent(ctx context.Context, config *types.AgentConfig) (*MainAgent, error) {
-	// 创建React智能体作为执行引擎
-	reactAgent, err := NewReactAgent(ctx, config)
+	// 创建多智能体管理器
+	manager, err := NewMultiAgentManager(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create react agent: %w", err)
+		return nil, fmt.Errorf("创建多智能体管理器失败: %w", err)
 	}
 
 	return &MainAgent{
-		chatModel:  config.ChatModel,
-		config:     config,
-		agentType:  types.AgentTypeMain,
-		reactAgent: reactAgent,
+		manager:   manager,
+		config:    config,
+		agentType: types.AgentTypeMaster, // 更新为新的类型
 	}, nil
 }
 
@@ -185,97 +181,20 @@ func (a *MainAgent) GetType() types.AgentType {
 
 // Generate 生成响应
 func (a *MainAgent) Generate(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.Message, error) {
-	// 进行意图识别和查询改写
-	rewrittenMessages, err := a.processUserIntent(ctx, messages)
-	if err != nil {
-		return nil, fmt.Errorf("failed to process user intent: %w", err)
-	}
-
-	// 使用React智能体执行实际的分析任务
-	return a.reactAgent.Generate(ctx, rewrittenMessages, opts...)
+	return a.manager.Generate(ctx, messages, opts...)
 }
 
 // Stream 流式生成响应
 func (a *MainAgent) Stream(ctx context.Context, messages []*schema.Message, opts ...interface{}) (*schema.StreamReader[*schema.Message], error) {
-	// 进行意图识别和查询改写
-	rewrittenMessages, err := a.processUserIntent(ctx, messages)
-	if err != nil {
-		return nil, fmt.Errorf("failed to process user intent: %w", err)
-	}
-
-	// 使用React智能体执行实际的分析任务
-	return a.reactAgent.Stream(ctx, rewrittenMessages, opts...)
+	return a.manager.Stream(ctx, messages, opts...)
 }
 
 // Initialize 初始化智能体
 func (a *MainAgent) Initialize(ctx context.Context) error {
-	return a.reactAgent.Initialize(ctx)
+	return a.manager.Initialize(ctx)
 }
 
 // Shutdown 关闭智能体
 func (a *MainAgent) Shutdown(ctx context.Context) error {
-	return a.reactAgent.Shutdown(ctx)
-}
-
-// processUserIntent 处理用户意图识别和查询改写
-func (a *MainAgent) processUserIntent(ctx context.Context, messages []*schema.Message) ([]*schema.Message, error) {
-	if len(messages) == 0 {
-		return messages, nil
-	}
-
-	// 获取用户的最后一条消息
-	lastMessage := messages[len(messages)-1]
-	if lastMessage.Role != schema.User {
-		return messages, nil
-	}
-
-	// 构建意图识别的系统提示
-	systemPrompt := `你是一个数据分析意图识别专家。请分析用户的查询，并根据需要进行改写以便更好地处理。
-
-分析用户查询时，请考虑：
-1. 用户是否需要数据分析？
-2. 用户是否需要数据可视化？
-3. 用户是否需要统计分析？
-4. 查询是否需要更清晰、具体的表达？
-
-如果查询已经足够清晰，请直接返回原查询。
-如果查询需要改写，请提供更清晰、具体的版本。
-
-用户查询: ` + lastMessage.Content
-
-	// 使用LLM进行意图识别和查询改写
-	intentMessages := []*schema.Message{
-		{
-			Role:    schema.System,
-			Content: systemPrompt,
-		},
-		{
-			Role:    schema.User,
-			Content: "请分析并改写这个查询（如果需要的话）。",
-		},
-	}
-
-	response, err := a.chatModel.Generate(ctx, intentMessages)
-	if err != nil {
-		// 如果意图识别失败，返回原始消息
-		if a.config.EnableDebug {
-			fmt.Printf("Intent recognition failed: %v\n", err)
-		}
-		return messages, nil
-	}
-
-	// 如果改写后的查询更好，使用改写后的版本
-	rewrittenContent := strings.TrimSpace(response.Content)
-	if rewrittenContent != "" && rewrittenContent != lastMessage.Content {
-		// 创建新的消息列表，替换最后一条用户消息
-		newMessages := make([]*schema.Message, len(messages))
-		copy(newMessages, messages)
-		newMessages[len(messages)-1] = &schema.Message{
-			Role:    schema.User,
-			Content: rewrittenContent,
-		}
-		return newMessages, nil
-	}
-
-	return messages, nil
+	return a.manager.Shutdown(ctx)
 }

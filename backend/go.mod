@@ -7,6 +7,7 @@ require (
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
 	github.com/golang-jwt/jwt/v5 v5.2.3
+	github.com/google/uuid v1.6.0
 	github.com/tealeg/xlsx/v3 v3.3.13
 	golang.org/x/crypto v0.40.0
 )

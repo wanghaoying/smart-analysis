@@ -49,7 +49,20 @@ func (am *AgentManager) GetAgent(agentType types.AgentType) (types.Agent, error)
 
 // GetMainAgent 获取主智能体
 func (m *AgentManager) GetMainAgent() (types.Agent, error) {
-	agent, err := m.GetAgent(types.AgentTypeMain)
+	// 首先尝试获取新的Multi-Agent类型
+	agent, err := m.GetAgent(types.AgentTypeMulti)
+	if err == nil {
+		return agent, nil
+	}
+
+	// 回退到兼容的Main类型
+	agent, err = m.GetAgent(types.AgentTypeMaster)
+	if err == nil {
+		return agent, nil
+	}
+
+	// 最后尝试原有的Main类型
+	agent, err = m.GetAgent(types.AgentTypeMain)
 	if err != nil {
 		return nil, fmt.Errorf("main agent not found")
 	}
@@ -83,6 +96,33 @@ func (m *AgentManager) ProcessQueryWithHistory(ctx context.Context, messages []*
 	return mainAgent.Generate(ctx, messages)
 }
 
+// ProcessQueryWithDataSchema 处理带数据模式的查询
+func (m *AgentManager) ProcessQueryWithDataSchema(ctx context.Context, query string, dataSchema *types.DataSchema) (*schema.Message, error) {
+	mainAgent, err := m.GetMainAgent()
+	if err != nil {
+		return nil, err
+	}
+
+	messages := []*schema.Message{
+		{
+			Role:    schema.User,
+			Content: query,
+		},
+	}
+
+	return mainAgent.Generate(ctx, messages, dataSchema)
+}
+
+// ProcessQueryWithHistoryAndDataSchema 处理带历史记录和数据模式的查询
+func (m *AgentManager) ProcessQueryWithHistoryAndDataSchema(ctx context.Context, messages []*schema.Message, dataSchema *types.DataSchema) (*schema.Message, error) {
+	mainAgent, err := m.GetMainAgent()
+	if err != nil {
+		return nil, err
+	}
+
+	return mainAgent.Generate(ctx, messages, dataSchema)
+}
+
 // StreamQuery 流式处理查询
 func (m *AgentManager) StreamQuery(ctx context.Context, query string) (*schema.StreamReader[*schema.Message], error) {
 	mainAgent, err := m.GetMainAgent()
@@ -108,6 +148,33 @@ func (m *AgentManager) StreamQueryWithHistory(ctx context.Context, messages []*s
 	}
 
 	return mainAgent.Stream(ctx, messages)
+}
+
+// StreamQueryWithDataSchema 流式处理带数据模式的查询
+func (m *AgentManager) StreamQueryWithDataSchema(ctx context.Context, query string, dataSchema *types.DataSchema) (*schema.StreamReader[*schema.Message], error) {
+	mainAgent, err := m.GetMainAgent()
+	if err != nil {
+		return nil, err
+	}
+
+	messages := []*schema.Message{
+		{
+			Role:    schema.User,
+			Content: query,
+		},
+	}
+
+	return mainAgent.Stream(ctx, messages, dataSchema)
+}
+
+// StreamQueryWithHistoryAndDataSchema 流式处理带历史记录和数据模式的查询
+func (m *AgentManager) StreamQueryWithHistoryAndDataSchema(ctx context.Context, messages []*schema.Message, dataSchema *types.DataSchema) (*schema.StreamReader[*schema.Message], error) {
+	mainAgent, err := m.GetMainAgent()
+	if err != nil {
+		return nil, err
+	}
+
+	return mainAgent.Stream(ctx, messages, dataSchema)
 }
 
 // Initialize 初始化所有智能体
@@ -211,16 +278,33 @@ func (b *AgentSystemBuilder) Build(ctx context.Context) (*AgentManager, error) {
 		Tools:         b.tools,
 		MaxSteps:      b.maxSteps,
 		EnableDebug:   b.enableDebug,
+		Metadata:      make(map[string]interface{}),
 	}
 
 	// 创建管理器
 	manager := NewAgentManager(config)
 
-	// 创建主智能体
+	// 优先创建新的多智能体系统
+	if b.pythonSandbox != nil {
+		multiAgent, err := agents.NewMultiAgentManager(ctx, config)
+		if err == nil {
+			manager.RegisterAgent(types.AgentTypeMulti, multiAgent)
+			if b.enableDebug {
+				fmt.Println("Created Multi-Agent system")
+			}
+		} else if b.enableDebug {
+			fmt.Printf("Failed to create Multi-Agent system: %v\n", err)
+		}
+	}
+
+	// 创建兼容的主智能体
 	mainAgent, err := agents.NewMainAgent(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create main agent: %w", err)
 	}
+	manager.RegisterAgent(types.AgentTypeMaster, mainAgent)
+
+	// 为了向后兼容，也注册为Main类型
 	manager.RegisterAgent(types.AgentTypeMain, mainAgent)
 
 	// 创建React智能体
@@ -237,7 +321,27 @@ func (b *AgentSystemBuilder) Build(ctx context.Context) (*AgentManager, error) {
 			return nil, fmt.Errorf("failed to create analysis agent: %w", err)
 		}
 		manager.RegisterAgent(types.AgentTypeAnalysis, analysisAgent)
-	} // 初始化所有智能体
+
+		// 创建专家智能体
+		factory := agents.NewAgentFactory()
+		expertTypes := factory.GetExpertAgentTypes()
+
+		for _, agentType := range expertTypes {
+			expert, err := factory.CreateExpertAgent(ctx, agentType, config)
+			if err != nil {
+				if b.enableDebug {
+					fmt.Printf("Failed to create expert agent %s: %v\n", agentType, err)
+				}
+				continue
+			}
+			manager.RegisterAgent(agentType, expert)
+			if b.enableDebug {
+				fmt.Printf("Created expert agent: %s\n", agentType)
+			}
+		}
+	}
+
+	// 初始化所有智能体
 	if err := manager.Initialize(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize agent system: %w", err)
 	}
